@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autourgos-vector-memory"
+version = "0.1.0"
+description = "Local, provider-agnostic embedding (vector) memory for Autourgos agents — VectorMemory, VectorRetriever."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [
+    {name = "Jitin Kumar Sengar", email = "devxjitin@gmail.com"}
+]
+keywords = ["autourgos", "agent", "memory", "llm", "embeddings", "vector"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "autourgos-memory>=1.0.5",
+    "autourgos-buffer-memory>=2.0.1",
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/devxjitin/autourgos-vector-memory"
+Repository = "https://github.com/devxjitin/autourgos-vector-memory"
+Issues = "https://github.com/devxjitin/autourgos-vector-memory/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["autourgos_vector_memory*"]
+
+[tool.setuptools.package-data]
+autourgos_vector_memory = ["py.typed"]
