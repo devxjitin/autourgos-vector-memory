@@ -93,6 +93,15 @@ def test_persistence_across_reopen(tmp_path):
     assert "blue" in results[0].content.lower()
 
 
+def test_supports_context_manager_and_closes_connection():
+    import sqlite3
+    with VectorRetriever(embed_fn=fake_embed) as r:
+        r.add_document(Document(content="My favorite color is blue."))
+        assert r.retrieve("blue", top_k=1)
+    with pytest.raises(sqlite3.ProgrammingError):
+        r.add_document(Document(content="after close"))
+
+
 def test_clear_resets_dimension_lock():
     r = VectorRetriever(embed_fn=fake_embed)
     r.add_document(Document(content="seed"))
@@ -104,6 +113,51 @@ def test_clear_resets_dimension_lock():
 
     r.embed_fn = other_dim_embed
     r.add_document(Document(content="ok now"))  # should not raise post-clear
+
+
+def test_retrieve_survives_mixed_dimension_rows_from_shared_db(tmp_path):
+    """Simulates two processes racing on an empty db_path: both instances
+    see `self._dim is None` and insert first, one at dim=4 one at dim=2,
+    before either has committed a row the other could see. Previously
+    retrieve() crashed with a ragged-sequence ValueError building
+    np.array(vectors); it must now skip the mismatched row instead."""
+    db_path = str(tmp_path / "vec.db")
+    r = VectorRetriever(embed_fn=fake_embed, db_path=db_path)
+    r.add_document(Document(content="My favorite color is blue."))
+
+    # bypass add_document's dimension guard entirely to reproduce a table
+    # that already has mixed-dimension rows on disk (as if written by a
+    # concurrent process before the guard's re-derived check could see it)
+    import json as _json
+    from datetime import datetime, timezone
+    r._conn.execute(
+        "INSERT INTO documents (content, metadata, vector, dim, created_at) "
+        "VALUES (?, ?, ?, ?, ?)",
+        ("orphaned 2-dim row", "{}", _json.dumps([1.0, 2.0]), 2,
+         datetime.now(timezone.utc).isoformat()),
+    )
+    r._conn.commit()
+
+    results = r.retrieve("what color do I like?", top_k=5)
+    assert len(results) == 1
+    assert "blue" in results[0].content.lower()
+
+
+def test_add_document_rejects_dimension_drift_even_with_stale_cache(tmp_path):
+    """After construction, if the DB already has rows the in-memory _dim
+    cache didn't see (another process wrote them), add_document must still
+    catch a dimension mismatch by re-checking the DB, not just the cache."""
+    db_path = str(tmp_path / "vec.db")
+    r = VectorRetriever(embed_fn=fake_embed, db_path=db_path)
+    r.add_document(Document(content="seed"))  # locks the table at dim=4
+
+    # A second instance opened before any rows existed would have cached
+    # `_dim=None`; force that stale state here.
+    r2 = VectorRetriever(embed_fn=lambda t: [1.0, 2.0], db_path=db_path)
+    r2._dim = None
+
+    with pytest.raises(VectorMemoryError):
+        r2.add_document(Document(content="mismatched"))
 
 
 # ── VectorMemory ─────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ import json
 import sqlite3
 import threading
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 from autourgos_buffer_memory import RuntimeShortTermMemory
@@ -105,9 +105,18 @@ class VectorRetriever(BaseRetriever):
 
     def add_document(self, document: Document) -> None:
         with self._lock:
-            vector = _validate_vector(self.embed_fn(document.content), self._dim)
-            if self._dim is None:
-                self._dim = len(vector)
+            # Re-derive the dimension from the table itself rather than
+            # trusting the in-memory `self._dim` cache alone: if another
+            # process (or another VectorRetriever instance) inserted rows
+            # into this same db_path after this instance was constructed,
+            # `self._dim` here would still be stale (or None), letting a
+            # differently-sized vector through and corrupting the table
+            # with mixed dimensions -- which later crashes retrieve()'s
+            # `np.array([...])` with a ragged-sequence ValueError.
+            row = self._conn.execute("SELECT dim FROM documents LIMIT 1").fetchone()
+            authoritative_dim = row[0] if row is not None else self._dim
+            vector = _validate_vector(self.embed_fn(document.content), authoritative_dim)
+            self._dim = len(vector)
             self._conn.execute(
                 "INSERT INTO documents (content, metadata, vector, dim, created_at) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -149,7 +158,22 @@ class VectorRetriever(BaseRetriever):
             if query_norm == 0:
                 return []
 
-            matrix = np.array([json.loads(r[2]) for r in rows], dtype=np.float64)
+            vectors = [json.loads(r[2]) for r in rows]
+            expected_dim = len(query_vec)
+            # Defense in depth against a table that ended up with mixed
+            # vector dimensions (e.g. a stale `self._dim` cache let a
+            # mismatched embed_fn through, or two processes raced on an
+            # empty db_path -- see add_document()). Rather than letting
+            # `np.array(vectors)` raise a ragged-sequence ValueError and
+            # take retrieve() down entirely, silently drop any row whose
+            # stored vector doesn't match the query's dimension so the
+            # rest of the store stays queryable.
+            usable = [(i, v) for i, v in enumerate(vectors) if len(v) == expected_dim]
+            if not usable:
+                return []
+            usable_idx = [i for i, _ in usable]
+            matrix = np.array([v for _, v in usable], dtype=np.float64)
+            rows = [rows[i] for i in usable_idx]
             norms = np.linalg.norm(matrix, axis=1)
             with np.errstate(invalid="ignore", divide="ignore"):
                 scores = (matrix @ query_vec) / (norms * query_norm)
@@ -177,6 +201,12 @@ class VectorRetriever(BaseRetriever):
     def close(self) -> None:
         with self._lock:
             self._conn.close()
+
+    def __enter__(self) -> "VectorRetriever":
+        return self
+
+    def __exit__(self, *exc_info: Any) -> None:
+        self.close()
 
 
 class VectorMemory(BaseMemory):
