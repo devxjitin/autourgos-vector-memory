@@ -113,9 +113,17 @@ for doc in results:
     print(doc.score, doc.content)
 ```
 
-All documents in a given `db_path` must embed to the same dimension — mixing embedding
-models on one store raises `VectorMemoryError`. Use a fresh `db_path` when you switch
-models.
+All documents in a given `db_path` must embed to the same dimension. `add_document()` checks
+the dimension of every new vector against the table's existing dimension (re-read from the
+database each call, not just cached in memory) and raises `VectorMemoryError` on a mismatch.
+Use a fresh `db_path` when you switch embedding models.
+
+Under true concurrent writes from separate processes racing on a brand-new, empty `db_path`,
+it's possible for two differently-sized vectors to both be inserted before either write is
+visible to the other. `retrieve()` defends against this: it silently skips any stored vector
+whose dimension doesn't match the query's, instead of crashing, so the rest of the store stays
+queryable even if this happens. This is a narrow multi-process edge case, not something a
+single-process application needs to worry about.
 
 ---
 
