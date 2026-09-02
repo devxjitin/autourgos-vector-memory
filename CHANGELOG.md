@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.1] - 2026-09-01
+
+- Metadata: added `maintainers` (Sonia, Vishwanil Suman) to `pyproject.toml`,
+  and added Contributor badges for both to the README (Sonia's linked to
+  her GitHub profile, https://github.com/dahiyasonia). No code changes.
+
+## [1.0.0] - 2026-09-01
+
+- Promoted to stable (`Development Status :: 5 - Production/Stable`, up from
+  `4 - Beta`). No code changes since 0.2.0 -- the API (`VectorMemory`,
+  `VectorRetriever`) has held steady across both prior releases, the
+  concurrency and mixed-dimension bugs found in 0.2.0 are fixed and
+  covered by regression tests, and the full test suite (16/16) passes.
+  This release is a version/classifier bump only, marking the package
+  ready for production use rather than early iteration.
+
 ## [0.2.0] - 2026-09-01
 
 - Fixed: `add_document()` now re-derives the table's dimension from the

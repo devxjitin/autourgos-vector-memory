@@ -4,6 +4,8 @@
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://pypi.org/project/autourgos-vector-memory/)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-green.svg)](https://github.com/devxjitin/autourgos-vector-memory/blob/main/LICENSE)
 [![Author](https://img.shields.io/badge/Author-Jitin%20Kumar%20Sengar-blue.svg)](https://github.com/devxjitin)
+[![Contributor](https://img.shields.io/badge/Contributor-Sonia-blueviolet.svg)](https://github.com/dahiyasonia)
+[![Contributor](https://img.shields.io/badge/Contributor-Vishwanil%20Suman-blueviolet.svg)]()
 
 Local, persisted, **provider-agnostic** embedding (vector) memory for [Autourgos](https://github.com/devxjitin)
 agents. You bring the embedding function — a local model, a cloud API, anything shaped
