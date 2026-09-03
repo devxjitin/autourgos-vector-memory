@@ -20,6 +20,6 @@ try:
     from importlib.metadata import version as _v
     __version__ = _v("autourgos-vector-memory")
 except Exception:
-    __version__ = "1.0.1"
+    __version__ = "1.0.2"
 
 __all__ = ["VectorMemory", "VectorRetriever", "VectorMemoryError"]
