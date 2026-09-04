@@ -199,3 +199,13 @@ def test_vector_memory_with_prebuilt_retriever():
     mem.add_user_message("The deploy target is the region us-east-1.")
     results = mem.retriever.retrieve("which region?", top_k=1)
     assert len(results) == 1
+
+
+def test_db_path_with_missing_parent_dir_is_created_automatically(tmp_path):
+    """Regression: a fresh db_path whose directory doesn't exist yet used
+    to raise sqlite3.OperationalError -- open_sqlite() now creates it."""
+    db_path = str(tmp_path / "nested" / "does" / "not" / "exist" / "vec.db")
+    r = VectorRetriever(embed_fn=fake_embed, db_path=db_path)
+    r.add_document(Document(content="test"))
+    r.close()
+    assert os.path.exists(db_path)

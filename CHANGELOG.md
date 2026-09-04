@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.4] - 2026-09-05
+
+- **Fixed:** a fresh `db_path` whose parent directory didn't exist yet raised `sqlite3.OperationalError` instead of creating it. Connection setup migrated to `autourgos_core.open_sqlite()`/`row_cap_evict()`. No behavior change beyond the fix. Bumped `autourgos-core>=0.9.0`. Reproduced the bug live before fixing.
+
 ## [1.0.3] - 2026-09-04
 
 - Internal: `__version__` resolution moved to `autourgos_core.package_version()` (new `autourgos-core>=0.3.0` dependency). No functional change.

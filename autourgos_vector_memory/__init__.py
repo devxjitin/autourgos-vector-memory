@@ -18,6 +18,6 @@ from .memory import VectorMemory, VectorMemoryError, VectorRetriever
 
 from autourgos_core import package_version
 
-__version__ = package_version("autourgos-vector-memory", fallback="1.0.3")
+__version__ = package_version("autourgos-vector-memory", fallback="1.0.4")
 
 __all__ = ["VectorMemory", "VectorRetriever", "VectorMemoryError"]

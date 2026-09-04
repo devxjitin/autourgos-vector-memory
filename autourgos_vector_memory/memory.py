@@ -10,13 +10,13 @@ autourgos-memory family's "bring your own everything" design.
 from __future__ import annotations
 
 import json
-import sqlite3
 import threading
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Sequence
 
 import numpy as np
 from autourgos_buffer_memory import RuntimeShortTermMemory
+from autourgos_core import open_sqlite, row_cap_evict
 from autourgos_memory import BaseMemory, MemoryMessage
 
 from .base import BaseRetriever, Document
@@ -83,8 +83,7 @@ class VectorRetriever(BaseRetriever):
         self._lock = threading.RLock()
         self._dim: Optional[int] = None
 
-        self._conn = sqlite3.connect(db_path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
+        self._conn = open_sqlite(db_path)
         self._conn.execute(
             """
             CREATE TABLE IF NOT EXISTS documents (
@@ -130,15 +129,8 @@ class VectorRetriever(BaseRetriever):
             )
             self._conn.commit()
             if self.max_documents is not None:
-                count = self._conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0]
-                overflow = count - self.max_documents
-                if overflow > 0:
-                    self._conn.execute(
-                        "DELETE FROM documents WHERE id IN "
-                        "(SELECT id FROM documents ORDER BY id ASC LIMIT ?)",
-                        (overflow,),
-                    )
-                    self._conn.commit()
+                row_cap_evict(self._conn, "documents", "id", self.max_documents)
+                self._conn.commit()
 
     def add_documents(self, documents: List[Document]) -> None:
         for doc in documents:
