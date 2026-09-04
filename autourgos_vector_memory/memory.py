@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 import numpy as np
 from autourgos_buffer_memory import RuntimeShortTermMemory
 from autourgos_core import open_sqlite, row_cap_evict
-from autourgos_memory import BaseMemory, MemoryMessage
+from autourgos_memory import BaseMemory, MemoryMessage, RetrievalAugmentedMemory
 
 from .base import BaseRetriever, Document
 
@@ -201,7 +201,7 @@ class VectorRetriever(BaseRetriever):
         self.close()
 
 
-class VectorMemory(BaseMemory):
+class VectorMemory(RetrievalAugmentedMemory):
     """Dual-store: sliding short-term buffer + persisted vector retrieval.
 
     Every message is added to a short-term buffer (recent turns, always
@@ -225,56 +225,12 @@ class VectorMemory(BaseMemory):
                 "Pass either embed_fn= (VectorMemory will build its own "
                 "VectorRetriever) or retriever= (a pre-built VectorRetriever)."
             )
-        self.short_term = short_term or RuntimeShortTermMemory(max_messages=10, name="vector")
-        self.retriever = retriever or VectorRetriever(
-            embed_fn=embed_fn,  # type: ignore[arg-type]
-            db_path=db_path,
-            max_documents=max_documents,
+        super().__init__(
+            short_term=short_term or RuntimeShortTermMemory(max_messages=10, name="vector"),
+            retriever=retriever or VectorRetriever(
+                embed_fn=embed_fn,  # type: ignore[arg-type]
+                db_path=db_path,
+                max_documents=max_documents,
+            ),
+            top_k=top_k,
         )
-        self.top_k = top_k
-
-    def _index(self, content: str, role: str, ts: datetime) -> None:
-        self.retriever.add_document(Document(
-            content=content,
-            metadata={"role": role, "timestamp": ts.astimezone(timezone.utc).isoformat()},
-        ))
-
-    def add_user_message(self, content: str) -> MemoryMessage:
-        msg = self.short_term.add_user_message(content)
-        self._index(content, "user", msg.timestamp)
-        return msg
-
-    def add_agent_message(self, content: str) -> MemoryMessage:
-        msg = self.short_term.add_agent_message(content)
-        self._index(content, "agent", msg.timestamp)
-        return msg
-
-    def add_tool_message(self, tool_name: str, result: str) -> MemoryMessage:
-        msg = self.short_term.add_tool_message(tool_name, result)
-        self._index(msg.content, "tool", msg.timestamp)
-        return msg
-
-    def format_for_llm(self, query: Optional[str] = None) -> str:
-        st_context = self.short_term.format_for_llm()
-        if not query:
-            return st_context
-        recent: set = set()
-        get_msgs = getattr(self.short_term, "get_messages", None)
-        if callable(get_msgs):
-            recent = {
-                m.content if hasattr(m, "content") else m.get("content", "")
-                for m in get_msgs()
-            }
-        relevant = [d for d in self.retriever.retrieve(query, top_k=self.top_k) if d.content not in recent]
-        if not relevant:
-            return st_context
-        past = "\n--- Relevant Past Context ---\n"
-        for doc in relevant:
-            prefix = f"[{doc.metadata['role']}]: " if "role" in doc.metadata else ""
-            past += f"{prefix}{doc.content}\n"
-        past += "-----------------------------\n\n"
-        return past + st_context
-
-    def clear(self) -> None:
-        self.short_term.clear()
-        self.retriever.clear()

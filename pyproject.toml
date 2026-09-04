@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "autourgos-vector-memory"
-version = "1.0.4"
+version = "1.1.0"
 description = "Local, provider-agnostic embedding (vector) memory for Autourgos agents — VectorMemory, VectorRetriever."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,7 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "autourgos-memory>=1.0.5",
+    "autourgos-memory>=1.2.0",
     "autourgos-buffer-memory>=2.0.1",
     "autourgos-core>=0.9.0",
     "numpy>=1.24",

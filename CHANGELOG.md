@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.0] - 2026-09-05
+
+- Internal: `VectorMemory` now extends `autourgos-memory`'s new `RetrievalAugmentedMemory` base class instead of duplicating the dual-store (short-term buffer + retriever) logic it shares with `autourgos-semantic-memory`'s `KeywordMemory`. Constructor signature and public behavior unchanged. Requires `autourgos-memory>=1.2.0`.
+
 ## [1.0.4] - 2026-09-05
 
 - **Fixed:** a fresh `db_path` whose parent directory didn't exist yet raised `sqlite3.OperationalError` instead of creating it. Connection setup migrated to `autourgos_core.open_sqlite()`/`row_cap_evict()`. No behavior change beyond the fix. Bumped `autourgos-core>=0.9.0`. Reproduced the bug live before fixing.
