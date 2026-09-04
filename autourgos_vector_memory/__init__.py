@@ -16,10 +16,8 @@ dependency of its own.
 """
 from .memory import VectorMemory, VectorMemoryError, VectorRetriever
 
-try:
-    from importlib.metadata import version as _v
-    __version__ = _v("autourgos-vector-memory")
-except Exception:
-    __version__ = "1.0.2"
+from autourgos_core import package_version
+
+__version__ = package_version("autourgos-vector-memory", fallback="1.0.3")
 
 __all__ = ["VectorMemory", "VectorRetriever", "VectorMemoryError"]
